@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.vscode/
+Dockerfile*
+docker-compose*
+*.user
+*.suo
+TestResults/
+node_modules/
+*.md

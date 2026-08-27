@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: insurance-payment-service
+    runtime: docker
+    rootDir: Backend/Payment-ServiceAPI
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit

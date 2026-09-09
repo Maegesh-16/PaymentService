@@ -7,3 +7,24 @@ services:
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
+    envVars:
+      - key: ConnectionStrings__PaymentServiceDb
+        sync: false
+      - key: JwtSettings__Issuer
+        value: InsurancePlatform.IdentityService
+      - key: JwtSettings__Audience
+        value: InsurancePlatform.Clients
+      - key: JwtSettings__SecretKey
+        sync: false
+      - key: JwtSettings__ValidateIssuer
+        value: "true"
+      - key: JwtSettings__ValidateAudience
+        value: "true"
+      - key: JwtSettings__ValidateLifetime
+        value: "true"
+      - key: JwtSettings__ValidateIssuerSigningKey
+        value: "true"
+      - key: JwtSettings__ClockSkewMinutes
+        value: "5"
+      - key: AppUrls__PublicBaseUrl
+        sync: false

@@ -11,7 +11,7 @@ services:
       - key: ConnectionStrings__PaymentServiceDb
         sync: false
       - key: JwtSettings__Issuer
-        value: InsurancePlatform.IdentityService
+        value: InsurancePlatform.Identity
       - key: JwtSettings__Audience
         value: InsurancePlatform.Clients
       - key: JwtSettings__SecretKey

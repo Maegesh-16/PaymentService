@@ -35,6 +35,7 @@ builder.Services.AddScoped<IAuditEventRepository, AuditEventRepository>();
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.Configure<PolicyValidationOptions>(builder.Configuration.GetSection(PolicyValidationOptions.SectionName));
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<IPolicyValidationClient, PolicyServiceValidationClient>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<PolicyValidationOptions>>().Value;

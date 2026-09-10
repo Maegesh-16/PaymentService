@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
@@ -13,15 +14,18 @@ public class PolicyServiceValidationClient : IPolicyValidationClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<PolicyServiceValidationClient> _logger;
     private readonly PolicyValidationOptions _options;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public PolicyServiceValidationClient(
         HttpClient httpClient,
         IOptions<PolicyValidationOptions> options,
-        ILogger<PolicyServiceValidationClient> logger)
+        ILogger<PolicyServiceValidationClient> logger,
+        IHttpContextAccessor httpContextAccessor)
     {
         _httpClient = httpClient;
         _logger = logger;
         _options = options.Value;
+        _httpContextAccessor = httpContextAccessor;
 
         if (_options.RequestTimeoutSeconds > 0)
         {
@@ -59,6 +63,11 @@ public class PolicyServiceValidationClient : IPolicyValidationClient
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                var authorizationHeader = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+                if (AuthenticationHeaderValue.TryParse(authorizationHeader, out var authorization))
+                {
+                    request.Headers.Authorization = authorization;
+                }
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
 
                 if (response.StatusCode == HttpStatusCode.NotFound)

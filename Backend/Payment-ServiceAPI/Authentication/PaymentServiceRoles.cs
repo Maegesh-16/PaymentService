@@ -11,4 +11,9 @@ public static class PaymentServiceRoles
     public const string CustomerSupport = "CustomerSupport";
     public const string Administrator = "Administrator";
     public const string Management = "Management";
+    public const string ClaimsAdjuster = "ClaimsAdjuster";
+    public const string PaymentOperations = "PaymentOperations";
+    public const string PlatformAdmin = "PlatformAdmin";
+    public const string PolicyUnderwriter = "PolicyUnderwriter";
+    public const string SupportAgent = "SupportAgent";
 }

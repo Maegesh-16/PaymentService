@@ -52,7 +52,12 @@ public static class AuthenticationExtensions
                     PaymentServiceRoles.FinanceTeam,
                     PaymentServiceRoles.CustomerSupport,
                     PaymentServiceRoles.Administrator,
-                    PaymentServiceRoles.Management));
+                    PaymentServiceRoles.Management,
+                    PaymentServiceRoles.ClaimsAdjuster,
+                    PaymentServiceRoles.PaymentOperations,
+                    PaymentServiceRoles.PlatformAdmin,
+                    PaymentServiceRoles.PolicyUnderwriter,
+                    PaymentServiceRoles.SupportAgent));
 
             options.AddPolicy(PaymentServicePolicies.PaymentWrite, policy =>
                 policy.RequireAuthenticatedUser().RequireRole(
@@ -61,10 +66,15 @@ public static class AuthenticationExtensions
                     PaymentServiceRoles.ClaimsOfficer,
                     PaymentServiceRoles.Finance,
                     PaymentServiceRoles.FinanceTeam,
-                    PaymentServiceRoles.Administrator));
+                    PaymentServiceRoles.Administrator,
+                    PaymentServiceRoles.ClaimsAdjuster,
+                    PaymentServiceRoles.PaymentOperations,
+                    PaymentServiceRoles.PlatformAdmin));
 
             options.AddPolicy(PaymentServicePolicies.PaymentAdmin, policy =>
-                policy.RequireAuthenticatedUser().RequireRole(PaymentServiceRoles.Administrator));
+                policy.RequireAuthenticatedUser().RequireRole(
+                    PaymentServiceRoles.Administrator,
+                    PaymentServiceRoles.PlatformAdmin));
         });
 
         services.AddSwaggerGen(options =>

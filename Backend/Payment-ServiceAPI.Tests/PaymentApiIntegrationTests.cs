@@ -33,12 +33,13 @@ public class PaymentApiIntegrationTests
 
         var payment = await CreatePaymentAsync(client);
 
-        var receiptBody = new CreateReceiptDto(payment.PaymentId, "R-1001", DateTime.UtcNow);
+        var receiptNumber = $"R-{Guid.NewGuid():N}";
+        var receiptBody = new CreateReceiptDto(payment.PaymentId, receiptNumber, DateTime.UtcNow);
 
-        var first = await PostWithIdempotencyAsync(client, "/api/payments/receipts", receiptBody, "receipt-1");
+        var first = await PostWithIdempotencyAsync(client, "/api/payments/receipts", receiptBody, $"receipt-{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
-        var second = await PostWithIdempotencyAsync(client, "/api/payments/receipts", receiptBody, "receipt-2");
+        var second = await PostWithIdempotencyAsync(client, "/api/payments/receipts", receiptBody, $"receipt-{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
     }
 
@@ -75,7 +76,7 @@ public class PaymentApiIntegrationTests
     private static async Task<PaymentDto> CreatePaymentAsync(HttpClient client)
     {
         var body = new CreatePaymentDto(KnownPolicyId, 2500m, "Card", "Completed", DateTime.UtcNow);
-        var response = await PostWithIdempotencyAsync(client, "/api/payments", body, "payment-create-1");
+        var response = await PostWithIdempotencyAsync(client, "/api/payments", body, $"payment-create-{Guid.NewGuid()}");
 
         if (!response.IsSuccessStatusCode)
         {

@@ -103,6 +103,82 @@ public class PaymentService : IPaymentService
             cancellationToken: cancellationToken);
     }
 
+    public async Task<CheckoutPaymentResponse> CheckoutAsync(CheckoutPaymentRequest request, string idempotencyKey, string actor, string correlationId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteIdempotentAsync(
+            operation: "CheckoutPayment",
+            idempotencyKey: idempotencyKey,
+            request: request,
+            actor: actor,
+            action: async () =>
+            {
+                PaymentTelemetry.PaymentCreateAttempts.Add(1);
+                using var activity = PaymentTelemetry.ActivitySource.StartActivity("payment.checkout");
+                activity?.SetTag("policy.id", request.PolicyId.ToString());
+
+                await EnsurePolicyExistsAsync(request.PolicyId, cancellationToken);
+
+                var completedAt = DateTime.UtcNow;
+                var payment = new Payment
+                {
+                    PaymentId = Guid.NewGuid(),
+                    PolicyId = request.PolicyId,
+                    Amount = request.Amount,
+                    Method = request.Method,
+                    Status = "Completed",
+                    PaymentDate = completedAt,
+                    CreatedAtUtc = completedAt,
+                    CreatedBy = actor
+                };
+                var transaction = new PaymentTransaction
+                {
+                    TransactionId = Guid.NewGuid(),
+                    PaymentId = payment.PaymentId,
+                    GatewayRef = $"GW-{Guid.NewGuid():N}".ToUpperInvariant(),
+                    Status = "Completed",
+                    CreatedAtUtc = completedAt,
+                    CreatedBy = actor
+                };
+                var receipt = new Receipt
+                {
+                    ReceiptId = Guid.NewGuid(),
+                    PaymentId = payment.PaymentId,
+                    ReceiptNumber = $"RCT-{completedAt:yyyyMMdd}-{Guid.NewGuid():N}".ToUpperInvariant(),
+                    GeneratedDate = completedAt,
+                    CreatedAtUtc = completedAt,
+                    CreatedBy = actor
+                };
+
+                await _paymentRepository.AddAsync(payment, cancellationToken);
+                await _paymentTransactionRepository.AddAsync(transaction, cancellationToken);
+                await _receiptRepository.AddAsync(receipt, cancellationToken);
+                await WriteAuditEventAsync("PaymentCheckoutCompleted", nameof(Payment), payment.PaymentId, actor, correlationId, new
+                {
+                    payment.PolicyId,
+                    payment.Amount,
+                    payment.Method,
+                    transaction.GatewayRef,
+                    receipt.ReceiptNumber
+                }, cancellationToken);
+
+                PaymentTelemetry.PaymentCreateSuccess.Add(1);
+                _logger.LogInformation(
+                    "Payment checkout completed. PaymentId={PaymentId} PolicyId={PolicyId} GatewayRef={GatewayRef} Actor={Actor}",
+                    payment.PaymentId,
+                    payment.PolicyId,
+                    transaction.GatewayRef,
+                    actor);
+
+                return new CheckoutPaymentResponse(payment.ToDto(), transaction.ToDto(), receipt.ToDto());
+            },
+            onFailure: exception =>
+            {
+                PaymentTelemetry.PaymentCreateFailures.Add(1);
+                _logger.LogWarning(exception, "Payment checkout failed for policy {PolicyId}", request.PolicyId);
+            },
+            cancellationToken: cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<PaymentTransactionDto>> GetTransactionsAsync(Guid? paymentId, CancellationToken cancellationToken = default)
     {
         using var activity = PaymentTelemetry.ActivitySource.StartActivity("payment.transactions.get");

@@ -24,7 +24,9 @@ public class DevelopmentAuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("token")]
-    public ActionResult<object> CreateDevelopmentToken([FromQuery] string role = PaymentServiceRoles.Administrator)
+    public ActionResult<object> CreateDevelopmentToken(
+        [FromQuery] string role = PaymentServiceRoles.Administrator,
+        [FromQuery] bool includeAudience = true)
     {
         if (!_environment.IsDevelopment())
         {
@@ -45,7 +47,7 @@ public class DevelopmentAuthController : ControllerBase
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
+            audience: includeAudience ? _jwtSettings.Audience : null,
             claims: claims,
             notBefore: DateTime.UtcNow,
             expires: expiresAt,

@@ -6,6 +6,7 @@ public interface IPaymentService
 {
     Task<IReadOnlyCollection<PaymentDto>> GetPaymentsAsync(Guid? policyId, CancellationToken cancellationToken = default);
     Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto request, string idempotencyKey, string actor, string correlationId, CancellationToken cancellationToken = default);
+    Task<CheckoutPaymentResponse> CheckoutAsync(CheckoutPaymentRequest request, string idempotencyKey, string actor, string correlationId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<PaymentTransactionDto>> GetTransactionsAsync(Guid? paymentId, CancellationToken cancellationToken = default);
     Task<PaymentTransactionDto> CreateTransactionAsync(CreatePaymentTransactionDto request, string idempotencyKey, string actor, string correlationId, CancellationToken cancellationToken = default);

@@ -33,6 +33,10 @@ public static class AuthenticationExtensions
                     ValidIssuer = jwtSettings.Issuer,
                     ValidateAudience = jwtSettings.ValidateAudience,
                     ValidAudience = jwtSettings.Audience,
+                    AudienceValidator = (audiences, _, _) =>
+                        audiences is null
+                        || !audiences.Any()
+                        || audiences.Contains(jwtSettings.Audience, StringComparer.Ordinal),
                     ValidateLifetime = jwtSettings.ValidateLifetime,
                     ValidateIssuerSigningKey = jwtSettings.ValidateIssuerSigningKey,
                     IssuerSigningKey = signingKey,

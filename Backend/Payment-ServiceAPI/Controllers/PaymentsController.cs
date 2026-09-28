@@ -49,6 +49,31 @@ public class PaymentsController : PaymentControllerBase
         }
     }
 
+    [HttpPost("checkout")]
+    [Authorize(Policy = PaymentServicePolicies.PaymentWrite)]
+    public async Task<ActionResult<CheckoutPaymentResponse>> Checkout([FromBody] CheckoutPaymentRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Idempotency key is required.",
+                Detail = "Provide the Idempotency-Key header for checkout operations.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        try
+        {
+            var result = await _paymentService.CheckoutAsync(request, idempotencyKey, ResolveActor(), HttpContext.TraceIdentifier, cancellationToken);
+            return CreatedAtAction(nameof(GetPayments), new { policyId = result.Payment.PolicyId }, result);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return HandleInvalidOperation(exception);
+        }
+    }
+
     [HttpGet("transactions")]
     public async Task<ActionResult<IReadOnlyCollection<PaymentTransactionDto>>> GetTransactions([FromQuery] Guid? paymentId, CancellationToken cancellationToken)
     {

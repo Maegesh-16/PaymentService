@@ -60,9 +60,54 @@ public class PaymentApiIntegrationTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetPayments_WithSignedCustomerTokenWithoutAudience_ReturnsOk()
+    {
+        await using var factory = new PaymentApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        await AuthorizeAsync(client, "Customer", includeAudience: false);
+
+        var response = await client.GetAsync("/api/payments");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Checkout_AsCustomer_PersistsCompletedTransactionAndReceipt()
+    {
+        await using var factory = new PaymentApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+
+        await AuthorizeAsync(client, "Customer", includeAudience: false);
+
+        var request = new CheckoutPaymentRequest(KnownPolicyId, 9311m, "Online");
+        var response = await PostWithIdempotencyAsync(client, "/api/payments/checkout", request, $"checkout-{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var checkout = await response.Content.ReadFromJsonAsync<CheckoutPaymentResponse>();
+        Assert.NotNull(checkout);
+        Assert.Equal("Completed", checkout.Payment.Status);
+        Assert.Equal(checkout.Payment.PaymentId, checkout.Transaction.PaymentId);
+        Assert.Equal("Completed", checkout.Transaction.Status);
+        Assert.StartsWith("GW-", checkout.Transaction.GatewayRef);
+        Assert.Equal(checkout.Payment.PaymentId, checkout.Receipt.PaymentId);
+        Assert.StartsWith("RCT-", checkout.Receipt.ReceiptNumber);
+
+        var transactions = await client.GetFromJsonAsync<List<PaymentTransactionDto>>($"/api/payments/transactions?paymentId={checkout.Payment.PaymentId}");
+        var receipts = await client.GetFromJsonAsync<List<ReceiptDto>>($"/api/payments/receipts?paymentId={checkout.Payment.PaymentId}");
+        Assert.Single(transactions!);
+        Assert.Single(receipts!);
+    }
+
     private static async Task AuthorizeAsAdminAsync(HttpClient client)
     {
-        var response = await client.PostAsync("/api/dev-auth/token?role=Administrator", null);
+        await AuthorizeAsync(client, "Administrator");
+    }
+
+    private static async Task AuthorizeAsync(HttpClient client, string role, bool includeAudience = true)
+    {
+        var response = await client.PostAsync($"/api/dev-auth/token?role={role}&includeAudience={includeAudience}", null);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync();

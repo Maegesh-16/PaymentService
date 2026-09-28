@@ -11,6 +11,16 @@ public sealed record CreatePaymentDto(
     [Required, MaxLength(30)] string Status,
     DateTime PaymentDate);
 
+public sealed record CheckoutPaymentRequest(
+    Guid PolicyId,
+    [Range(typeof(decimal), "0.01", "1000000000")] decimal Amount,
+    [Required, MaxLength(20)] string Method);
+
+public sealed record CheckoutPaymentResponse(
+    PaymentDto Payment,
+    PaymentTransactionDto Transaction,
+    ReceiptDto Receipt);
+
 public sealed record PaymentTransactionDto(Guid TransactionId, Guid PaymentId, string GatewayRef, string Status);
 
 public sealed record CreatePaymentTransactionDto(

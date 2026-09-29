@@ -81,7 +81,8 @@ public class PaymentApiIntegrationTests
 
         await AuthorizeAsync(client, "Customer", includeAudience: false);
 
-        var request = new CheckoutPaymentRequest(KnownPolicyId, 9311m, "Online");
+        var scheduleId = await CreatePremiumScheduleAsync(client);
+        var request = new CheckoutPaymentRequest(KnownPolicyId, scheduleId, 9311m, "Online");
         var response = await PostWithIdempotencyAsync(client, "/api/payments/checkout", request, $"checkout-{Guid.NewGuid()}");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -98,6 +99,27 @@ public class PaymentApiIntegrationTests
         var receipts = await client.GetFromJsonAsync<List<ReceiptDto>>($"/api/payments/receipts?paymentId={checkout.Payment.PaymentId}");
         Assert.Single(transactions!);
         Assert.Single(receipts!);
+
+        using var schedulesResponse = await client.GetAsync($"/api/premium/schedules?policyId={KnownPolicyId}");
+        schedulesResponse.EnsureSuccessStatusCode();
+        using var schedulesStream = await schedulesResponse.Content.ReadAsStreamAsync();
+        using var schedulesJson = await JsonDocument.ParseAsync(schedulesStream);
+        var paidSchedule = Assert.Single(schedulesJson.RootElement.EnumerateArray());
+        Assert.Equal("Paid", paidSchedule.GetProperty("status").GetString());
+        Assert.Equal(checkout.Payment.PaymentId, paidSchedule.GetProperty("paymentId").GetGuid());
+    }
+
+    private static async Task<Guid> CreatePremiumScheduleAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/api/premium/schedules", new
+        {
+            policyId = KnownPolicyId,
+            frequency = "Annual"
+        });
+        response.EnsureSuccessStatusCode();
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var json = await JsonDocument.ParseAsync(stream);
+        return json.RootElement[0].GetProperty("scheduleId").GetGuid();
     }
 
     private static async Task AuthorizeAsAdminAsync(HttpClient client)

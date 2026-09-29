@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Payment_ServiceAPI.Data;
 using Payment_ServiceAPI.DTOs.Payments;
 using Payment_ServiceAPI.Integrations.PolicyValidation;
 using Payment_ServiceAPI.Mappers;
@@ -15,6 +17,7 @@ namespace Payment_ServiceAPI.Services.Implementations;
 
 public class PaymentService : IPaymentService
 {
+    private readonly PaymentDbContext _dbContext;
     private readonly IPaymentRepository _paymentRepository;
     private readonly IPaymentTransactionRepository _paymentTransactionRepository;
     private readonly IRefundRepository _refundRepository;
@@ -25,6 +28,7 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
 
     public PaymentService(
+        PaymentDbContext dbContext,
         IPaymentRepository paymentRepository,
         IPaymentTransactionRepository paymentTransactionRepository,
         IRefundRepository refundRepository,
@@ -34,6 +38,7 @@ public class PaymentService : IPaymentService
         IAuditEventRepository auditEventRepository,
         ILogger<PaymentService> logger)
     {
+        _dbContext = dbContext;
         _paymentRepository = paymentRepository;
         _paymentTransactionRepository = paymentTransactionRepository;
         _refundRepository = refundRepository;
@@ -118,6 +123,25 @@ public class PaymentService : IPaymentService
 
                 await EnsurePolicyExistsAsync(request.PolicyId, cancellationToken);
 
+                var schedule = await _dbContext.PremiumSchedules
+                    .SingleOrDefaultAsync(x => x.ScheduleId == request.ScheduleId, cancellationToken)
+                    ?? throw new InvalidOperationException($"Premium schedule '{request.ScheduleId}' was not found.");
+
+                if (schedule.PolicyId != request.PolicyId)
+                {
+                    throw new InvalidOperationException("The selected premium schedule does not belong to this policy.");
+                }
+
+                if (string.Equals(schedule.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("This premium installment has already been paid.");
+                }
+
+                if (schedule.Amount != request.Amount)
+                {
+                    throw new InvalidOperationException("The payment amount does not match the selected premium installment.");
+                }
+
                 var completedAt = DateTime.UtcNow;
                 var payment = new Payment
                 {
@@ -148,6 +172,12 @@ public class PaymentService : IPaymentService
                     CreatedAtUtc = completedAt,
                     CreatedBy = actor
                 };
+
+                schedule.Status = "Paid";
+                schedule.PaymentId = payment.PaymentId;
+                schedule.PaidDate = completedAt;
+                schedule.UpdatedAtUtc = completedAt;
+                schedule.UpdatedBy = actor;
 
                 await _paymentRepository.AddAsync(payment, cancellationToken);
                 await _paymentTransactionRepository.AddAsync(transaction, cancellationToken);

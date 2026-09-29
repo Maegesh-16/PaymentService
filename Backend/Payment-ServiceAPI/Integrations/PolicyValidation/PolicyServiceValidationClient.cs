@@ -114,6 +114,34 @@ public class PolicyServiceValidationClient : IPolicyValidationClient
         return false;
     }
 
+    public async Task<PolicyPaymentDetails?> GetPolicyPaymentDetailsAsync(Guid policyId, CancellationToken cancellationToken = default)
+    {
+        if (policyId == Guid.Empty || string.IsNullOrWhiteSpace(_options.BaseUrl))
+        {
+            return null;
+        }
+
+        var endpoint = _options.ExistsEndpointTemplate.Replace("{policyId}", policyId.ToString());
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+        var authorizationHeader = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+        if (AuthenticationHeaderValue.TryParse(authorizationHeader, out var authorization))
+        {
+            request.Headers.Authorization = authorization;
+        }
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<PolicyPaymentDetails>(new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }, cancellationToken);
+    }
+
     private static bool IsTransient(HttpStatusCode statusCode)
     {
         var code = (int)statusCode;

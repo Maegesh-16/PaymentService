@@ -13,6 +13,7 @@ public sealed record CreatePaymentDto(
 
 public sealed record CheckoutPaymentRequest(
     Guid PolicyId,
+    Guid ScheduleId,
     [Range(typeof(decimal), "0.01", "1000000000")] decimal Amount,
     [Required, MaxLength(20)] string Method);
 

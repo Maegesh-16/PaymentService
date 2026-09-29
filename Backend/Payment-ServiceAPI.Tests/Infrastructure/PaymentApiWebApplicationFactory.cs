@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Payment_ServiceAPI.Integrations.PolicyValidation;
 
 namespace Payment_ServiceAPI.Tests.Infrastructure;
 
@@ -34,5 +37,24 @@ public class PaymentApiWebApplicationFactory : WebApplicationFactory<Program>
                 configurationBuilder.AddInMemoryCollection(_overrides);
             }
         });
+
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IPolicyValidationClient>();
+            services.AddSingleton<IPolicyValidationClient, TestPolicyValidationClient>();
+        });
+    }
+
+    private sealed class TestPolicyValidationClient : IPolicyValidationClient
+    {
+        private static readonly Guid KnownPolicyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        public Task<bool> PolicyExistsAsync(Guid policyId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(policyId == KnownPolicyId);
+
+        public Task<PolicyPaymentDetails?> GetPolicyPaymentDetailsAsync(Guid policyId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(policyId == KnownPolicyId
+                ? new PolicyPaymentDetails(KnownPolicyId, new DateTime(2026, 9, 1), 9311m, 3)
+                : null);
     }
 }

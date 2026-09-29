@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Payment_ServiceAPI.Models.Audit;
 using Payment_ServiceAPI.Models.Operations;
 using Payment_ServiceAPI.Models.Payments;
+using Payment_ServiceAPI.Models.Premiums;
 
 namespace Payment_ServiceAPI.Data;
 
@@ -18,6 +19,7 @@ public class PaymentDbContext : DbContext
     public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<PremiumSchedule> PremiumSchedules => Set<PremiumSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
